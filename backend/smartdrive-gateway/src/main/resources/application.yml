@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: smartdrive-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+    gateway:
+      routes:
+        # auth-service
+        - id: auth
+          uri: lb://smartdrive-auth
+          predicates:
+            - Path=/api/auth/**,/api/admin/getSysSettings,/api/admin/saveSysSettings,/api/admin/loadUserList,/api/admin/updateUserStatus,/api/admin/updateUserSpace,/api/admin/assignDepartment,/api/admin/departmentMembers,/api/approval/**
+          filters:
+            - StripPrefix=0
+        # file-service
+        - id: file
+          uri: lb://smartdrive-file
+          predicates:
+            - Path=/api/file/**,/api/recycle/**,/api/admin/loadFileList,/api/admin/getFile/**,/api/admin/ts/**,/api/admin/createDownloadUrl/**,/api/admin/delFile,/api/admin/download/**,/api/admin/getFolderInfo,/api/admin/department/**,/api/admin/audit/**
+          filters:
+            - StripPrefix=0
+        # share-service
+        - id: share
+          uri: lb://smartdrive-share
+          predicates:
+            - Path=/api/share/**,/api/showShare/**
+          filters:
+            - StripPrefix=0
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      timeout: 3000ms
+
+jwt:
+  secret: smartdrive-jwt-secret-key-2026-must-be-at-least-256-bits-long-change-in-production
+  expiration: 1800000
+  refresh-expiration: 604800000

@@ -1,0 +1,5 @@
+#!/bin/bash
+export JAVA_HOME="/c/Users/A1799/.jdks/ms-21.0.7"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WRAPPER_JAR="$PROJECT_DIR/.mvn/wrapper/maven-wrapper.jar"
+exec "$JAVA_HOME/bin/java" -jar "$WRAPPER_JAR" -Dmaven.multiModuleProjectDirectory="$PROJECT_DIR" "$@"
