@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartdrive.file.mapper.AuditLogMapper">
+
+    <resultMap id="base_result_map" type="com.smartdrive.file.entity.AuditLogEntry">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="action" property="action"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="target_name" property="targetName"/>
+        <result column="file_pid" property="filePid"/>
+        <result column="file_deleted" property="fileDeleted"/>
+        <result column="file_archived" property="fileArchived"/>
+        <result column="detail" property="detail"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="department_id" property="departmentId"/>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO audit_log (user_id, user_name, action, target_type, target_id, target_name, detail, created_at, department_id)
+        VALUES (#{entry.userId}, #{entry.userName}, #{entry.action}, #{entry.targetType},
+                #{entry.targetId}, #{entry.targetName}, #{entry.detail}, NOW(), #{entry.departmentId})
+    </insert>
+
+    <select id="selectList" resultMap="base_result_map">
+        SELECT a.*,
+               f.file_pid,
+               CASE WHEN f.file_id IS NULL OR f.del_flag = 1 THEN TRUE ELSE FALSE END AS file_deleted,
+               CASE WHEN f.archived = 1 THEN TRUE ELSE FALSE END AS file_archived
+        FROM audit_log a
+        LEFT JOIN file_info f ON a.target_id = f.file_id
+        <where>
+            <if test="userId != null and userId != ''">
+                AND a.user_id = #{userId}
+            </if>
+            <if test="action != null and action != ''">
+                AND a.action = #{action}
+            </if>
+            <if test="startTime != null">
+                AND a.created_at >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND a.created_at &lt;= #{endTime}
+            </if>
+            <if test="deptUserIds != null and deptUserIds.size() > 0">
+                AND a.user_id IN
+                <foreach collection="deptUserIds" item="uid" open="(" close=")" separator=",">
+                    #{uid}
+                </foreach>
+            </if>
+            <if test="departmentId != null and departmentId != ''">
+                AND a.department_id = #{departmentId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND a.target_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        ORDER BY ${orderBy}
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1) FROM audit_log
+        <where>
+            <if test="userId != null and userId != ''">
+                AND user_id = #{userId}
+            </if>
+            <if test="action != null and action != ''">
+                AND action = #{action}
+            </if>
+            <if test="startTime != null">
+                AND created_at >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt;= #{endTime}
+            </if>
+            <if test="deptUserIds != null and deptUserIds.size() > 0">
+                AND user_id IN
+                <foreach collection="deptUserIds" item="uid" open="(" close=")" separator=",">
+                    #{uid}
+                </foreach>
+            </if>
+            <if test="departmentId != null and departmentId != ''">
+                AND department_id = #{departmentId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND target_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+    </select>
+
+</mapper>
