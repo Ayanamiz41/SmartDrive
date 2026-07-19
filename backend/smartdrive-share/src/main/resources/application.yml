@@ -1,0 +1,35 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: smartdrive-share
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/smartdrive?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowPublicKeyRetrieval=true&allowMultiQueries=true
+    username: root
+    password: kksk114514
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCP
+      minimum-idle: 5
+      maximum-pool-size: 10
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.smartdrive.share.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+project:
+  folder: D:/project/SmartDrive/data

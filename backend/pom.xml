@@ -15,6 +15,7 @@
         <module>smartdrive-gateway</module>
         <module>smartdrive-auth</module>
         <module>smartdrive-file</module>
+        <module>smartdrive-share</module>
     </modules>
 
     <parent>
