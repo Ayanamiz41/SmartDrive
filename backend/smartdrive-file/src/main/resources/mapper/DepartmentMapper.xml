@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartdrive.file.mapper.DepartmentMapper">
+
+    <resultMap id="base_result_map" type="com.smartdrive.file.entity.Department">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="head_user_id" property="headUserId"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="head_user_name" property="headUserName"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="base_result_map">
+        SELECT d.*
+        FROM department d
+        ORDER BY d.sort_order, d.created_at
+    </select>
+
+    <select id="selectById" resultMap="base_result_map">
+        SELECT d.*
+        FROM department d
+        WHERE d.id = #{id}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO department (id, name, parent_id, head_user_id, sort_order, created_at)
+        VALUES (#{dept.id}, #{dept.name}, #{dept.parentId}, #{dept.headUserId}, #{dept.sortOrder}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE department
+        <set>
+            <if test="dept.name != null">name = #{dept.name},</if>
+            <if test="dept.parentId != null">parent_id = #{dept.parentId},</if>
+            <if test="dept.sortOrder != null">sort_order = #{dept.sortOrder},</if>
+        </set>
+        WHERE id = #{dept.id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM department WHERE id = #{id}
+    </delete>
+
+    <update id="setHeadUser">
+        UPDATE department SET head_user_id = #{headUserId} WHERE id = #{id}
+    </update>
+
+    <select id="getHeadUserId" resultType="string">
+        SELECT head_user_id FROM department WHERE id = #{id}
+    </select>
+
+    <select id="selectByName" resultMap="base_result_map">
+        SELECT * FROM department WHERE name = #{name}
+        <if test="excludeId != null">AND id != #{excludeId}</if>
+        LIMIT 1
+    </select>
+
+</mapper>
