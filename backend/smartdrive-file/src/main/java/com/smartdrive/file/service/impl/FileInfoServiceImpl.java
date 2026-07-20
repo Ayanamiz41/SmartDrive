@@ -1105,6 +1105,123 @@ public class FileInfoServiceImpl implements FileInfoService {
         }
     }
 
+    // ===================================================================
+    // 归档 / 取消归档 — 仅部门空间文件，仅 admin + 部门主管
+    // ===================================================================
+    @Override
+    public void archiveFile(String userId, String fileIds, boolean isAdmin) {
+        String[] ids = fileIds.split(",");
+        List<String> subFileIds = new ArrayList<>();
+
+        // 权限检查 + 收集子文件
+        for (String fileId : ids) {
+            String tid = fileId.trim();
+            FileInfo file = fileInfoMapper.selectByFileId(tid);
+            if (file == null) continue;
+            checkArchivePermission(file, userId, isAdmin);
+            if (file.getFolderType() != null && file.getFolderType().equals(FileFolderTypeEnum.FOLDER.getType())) {
+                findAllSubFolderFileList(subFileIds, tid, FileDelFlagEnum.USING.getFlag());
+            }
+        }
+
+        // 标记子文件
+        if (!subFileIds.isEmpty()) {
+            FileInfo subUpdate = new FileInfo();
+            subUpdate.setArchived(1);
+            subUpdate.setArchivedTime(new Date());
+            subUpdate.setLastUpdateUserId(userId);
+            for (String sid : subFileIds) {
+                fileInfoMapper.updateByFileId(subUpdate, sid);
+                fileSearchService.sync(FileDocument.from(fileInfoMapper.selectByFileId(sid)));
+            }
+        }
+
+        // 标记顶层文件/文件夹（移到根目录）
+        Date now = new Date();
+        for (String fileId : ids) {
+            String tid = fileId.trim();
+            FileInfo update = new FileInfo();
+            update.setArchived(1);
+            update.setArchivedTime(now);
+            update.setLastUpdateUserId(userId);
+            update.setFilePid(Constants.ZERO_STR);
+            fileInfoMapper.updateByFileId(update, tid);
+            fileSearchService.sync(FileDocument.from(fileInfoMapper.selectByFileId(tid)));
+        }
+    }
+
+    @Override
+    public void unarchiveFile(String userId, String fileIds, boolean isAdmin) {
+        String[] ids = fileIds.split(",");
+        List<String> subFileIds = new ArrayList<>();
+
+        // 权限检查 + 收集子文件
+        for (String fileId : ids) {
+            String tid = fileId.trim();
+            FileInfo file = fileInfoMapper.selectByFileId(tid);
+            if (file == null) continue;
+            checkArchivePermission(file, userId, isAdmin);
+            if (file.getFolderType() != null && file.getFolderType().equals(FileFolderTypeEnum.FOLDER.getType())) {
+                findAllSubFolderFileList(subFileIds, tid, FileDelFlagEnum.USING.getFlag());
+            }
+        }
+
+        // 取消归档子文件（含同名冲突检测）
+        if (!subFileIds.isEmpty()) {
+            for (String sid : subFileIds) {
+                FileInfo sub = fileInfoMapper.selectByFileId(sid);
+                if (sub != null) {
+                    checkUnarchiveConflict(sub);
+                }
+                FileInfo subUpdate = new FileInfo();
+                subUpdate.setArchived(0);
+                subUpdate.setArchivedTime(null);
+                subUpdate.setLastUpdateUserId(userId);
+                fileInfoMapper.updateByFileId(subUpdate, sid);
+                fileSearchService.sync(FileDocument.from(fileInfoMapper.selectByFileId(sid)));
+            }
+        }
+
+        // 取消归档顶层文件/文件夹（含同名冲突检测）
+        for (String fileId : ids) {
+            String tid = fileId.trim();
+            FileInfo file = fileInfoMapper.selectByFileId(tid);
+            if (file != null) {
+                checkUnarchiveConflict(file);
+            }
+            FileInfo update = new FileInfo();
+            update.setArchived(0);
+            update.setArchivedTime(null);
+            update.setLastUpdateUserId(userId);
+            fileInfoMapper.updateByFileId(update, tid);
+            fileSearchService.sync(FileDocument.from(fileInfoMapper.selectByFileId(tid)));
+        }
+    }
+
+    private void checkArchivePermission(FileInfo file, String userId, boolean isAdmin) {
+        if (isAdmin) return;
+        // 仅部门空间文件可归档
+        if (file.getDepartmentId() == null || file.getDepartmentId().isEmpty()) {
+            throw new BusinessException("个人空间文件不支持归档");
+        }
+        // 仅部门主管可归档
+        if (!departmentService.isDeptHead(file.getDepartmentId(), userId)) {
+            throw new BusinessException("仅部门主管可归档部门文件");
+        }
+    }
+
+    /** 取消归档前检测目标位置是否有同名非归档文件，有则重命名 */
+    private void checkUnarchiveConflict(FileInfo file) {
+        FileInfoQuery dupQuery = new FileInfoQuery();
+        dupQuery.setFilePid(file.getFilePid());
+        dupQuery.setFileName(file.getFileName());
+        dupQuery.setDelFlag(FileDelFlagEnum.USING.getFlag());
+        dupQuery.setArchived(0);
+        if (file.getDepartmentId() != null) {
+            dupQuery.setDepartmentId(file.getDepartmentId());
+        } else {
+            dupQuery.setUserId(file.getUserId());
+        }
         if (fileInfoMapper.selectCount(dupQuery) > 0) {
             FileInfo renameInfo = new FileInfo();
             renameInfo.setFileName(StringTools.rename(file.getFileName()));

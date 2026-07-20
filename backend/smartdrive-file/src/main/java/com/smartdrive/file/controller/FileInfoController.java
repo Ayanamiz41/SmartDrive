@@ -290,6 +290,22 @@ public class FileInfoController extends CommonFileController {
         return getSuccessResponseVO(null);
     }
 
+    // ===== 归档 =====
+    @PostMapping("/archive")
+    @AuditLog(value = AuditAction.ARCHIVE, targetType = TargetType.FILE,
+              targetIdParam = "fileIds")
+    public ResponseVO archive(@RequestParam String fileIds) {
+        fileInfoService.archiveFile(getCurrentUserId(), fileIds, isAdmin());
+        return getSuccessResponseVO(null);
+    }
+
+    @PostMapping("/unarchive")
+    @AuditLog(value = AuditAction.UNARCHIVE, targetType = TargetType.FILE,
+              targetIdParam = "fileIds")
+    public ResponseVO unarchive(@RequestParam String fileIds) {
+        fileInfoService.unarchiveFile(getCurrentUserId(), fileIds, isAdmin());
+        return getSuccessResponseVO(null);
+    }
 
     /** 个人空间文件上传到部门空间 */
     @AuditLog(value = AuditAction.COPY_TO_DEPT, targetType = TargetType.FILE, targetIdParam = "fileId")
@@ -306,6 +322,35 @@ public class FileInfoController extends CommonFileController {
     public ResponseVO copyToPersonal(@RequestParam String fileId, @RequestParam String targetFolderId) {
         fileInfoService.copyFile(fileId, targetFolderId, getCurrentUserId(), null);
         return getSuccessResponseVO(null);
+    }
+
+    @RequestMapping("/loadArchiveList")
+    public ResponseVO loadArchiveList(FileInfoQuery query, String category,
+                                       @RequestParam(required = false) String departmentId) {
+        FileCatogoryEnum categoryEnum = FileCatogoryEnum.getByCode(category);
+        if (categoryEnum != null) { query.setFileCategory(categoryEnum.getCategory()); }
+        query.setArchived(1);
+        query.setDelFlag(FileDelFlagEnum.USING.getFlag());
+        if (query.getOrderBy() == null) {
+            query.setOrderBy("last_update_time desc");
+        }
+        if (isAdmin()) {
+            // 管理员：必须选部门
+            if (departmentId != null && !departmentId.isEmpty()) {
+                query.setDepartmentIds(java.util.List.of(departmentId));
+            }
+            // 未选部门返回空
+        } else {
+            String deptId = getCurrentUserDepartmentId();
+            if (deptId != null && !deptId.isEmpty()) {
+                query.setDepartmentIds(java.util.List.of(deptId));
+            } else {
+                // 员工无部门，拒绝访问归档库
+                throw new BusinessException("仅部门成员可访问归档库");
+            }
+        }
+        PaginationResultVO result = fileInfoService.findListByPage(query);
+        return getSuccessResponseVO(convert2PaginationVO(result, FileInfoVO.class));
     }
 
     private void enrichNickNames(List<FileInfo> files) {

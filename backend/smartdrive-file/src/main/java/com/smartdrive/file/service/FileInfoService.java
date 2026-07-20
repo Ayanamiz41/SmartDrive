@@ -58,6 +58,8 @@ public interface FileInfoService {
     void saveShare(String shareRootFileId, String shareFileIds, String myFolderId,
                    String shareUserId, String targetDepartmentId, String currentUserId);
 
+    void archiveFile(String userId, String fileIds, boolean isAdmin);
+    void unarchiveFile(String userId, String fileIds, boolean isAdmin);
 
     /** 拷贝文件到其他空间（个人→部门 或 部门→个人），增加当前用户空间占用 */
     void copyFile(String fileId, String targetFolderId, String userId, String targetDepartmentId);
