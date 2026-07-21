@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartdrive.auth.mapper.ApprovalRequestMapper">
+
+    <resultMap id="base_result_map" type="com.smartdrive.auth.entity.ApprovalRequest">
+        <id column="id" property="id"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="department_id" property="departmentId"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="content" property="content"/>
+        <result column="status" property="status"/>
+        <result column="comment" property="comment"/>
+        <result column="create_time" property="createTime"/>
+        <result column="handle_time" property="handleTime"/>
+    </resultMap>
+
+    <resultMap id="vo_result_map" type="com.smartdrive.auth.entity.vo.ApprovalVO">
+        <id column="id" property="id"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="department_id" property="departmentId"/>
+        <result column="department_name" property="departmentName"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="approver_name" property="approverName"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="content" property="content"/>
+        <result column="status" property="status"/>
+        <result column="comment" property="comment"/>
+        <result column="create_time" property="createTime"/>
+        <result column="handle_time" property="handleTime"/>
+    </resultMap>
+
+    <sql id="query_condition">
+        <where>
+            <if test="query.status != null">AND a.status = #{query.status}</if>
+            <if test="query.applicantId != null and query.applicantId != ''">AND a.applicant_id = #{query.applicantId}</if>
+            <if test="query.approverId != null and query.approverId != ''">AND a.approver_id = #{query.approverId}</if>
+            <if test="query.departmentId != null and query.departmentId != ''">AND a.department_id = #{query.departmentId}</if>
+            <if test="query.excludeApplicantId != null and query.excludeApplicantId != ''">AND a.applicant_id != #{query.excludeApplicantId}</if>
+            <if test="query.createTimeStart != null">AND a.create_time >= #{query.createTimeStart}</if>
+            <if test="query.createTimeEnd != null">AND a.create_time &lt;= #{query.createTimeEnd}</if>
+            <if test="query.handleTimeStart != null">AND a.handle_time >= #{query.handleTimeStart}</if>
+            <if test="query.handleTimeEnd != null">AND a.handle_time &lt;= #{query.handleTimeEnd}</if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultMap="vo_result_map">
+        SELECT
+            a.id,
+            a.applicant_id,
+            ua.nick_name AS applicant_name,
+            a.department_id,
+            d.name AS department_name,
+            a.approver_id,
+            ue.nick_name AS approver_name,
+            a.file_id,
+            a.file_name,
+            a.content,
+            a.status,
+            a.comment,
+            a.create_time,
+            a.handle_time
+        FROM approval_request a
+        LEFT JOIN user_info ua ON a.applicant_id = ua.user_id
+        LEFT JOIN user_info ue ON a.approver_id = ue.user_id
+        LEFT JOIN department d ON a.department_id = d.id
+        <include refid="query_condition"/>
+        <if test="query.orderBy != null">ORDER BY ${query.orderBy}</if>
+        <if test="query.pageNo != null and query.pageSize != null">
+            LIMIT ${(query.pageNo - 1) * query.pageSize}, ${query.pageSize}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM approval_request a
+        <include refid="query_condition"/>
+    </select>
+
+    <select id="selectById" resultMap="base_result_map">
+        SELECT id, applicant_id, department_id, approver_id, file_id, file_name, content, status, comment, create_time, handle_time
+        FROM approval_request WHERE id = #{id}
+    </select>
+
+    <insert id="insertBean" parameterType="com.smartdrive.auth.entity.ApprovalRequest">
+        INSERT INTO approval_request (id, applicant_id, department_id, approver_id, file_id, file_name, content, status, create_time)
+        VALUES (#{bean.id}, #{bean.applicantId}, #{bean.departmentId}, #{bean.approverId},
+                #{bean.fileId}, #{bean.fileName}, #{bean.content}, #{bean.status}, #{bean.createTime})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE approval_request SET status = #{status}, comment = #{comment}
+        <if test="handleTime != null">, handle_time = #{handleTime}</if>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateResubmit">
+        UPDATE approval_request SET
+            content = #{content},
+            status = 0,
+            approver_id = #{approverId},
+            create_time = #{createTime},
+            handle_time = NULL,
+            comment = NULL
+        WHERE id = #{id}
+    </update>
+
+</mapper>
